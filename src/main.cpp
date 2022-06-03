@@ -4,6 +4,17 @@
 
 using namespace reactphysics3d;
 
+class Manipulator 
+{
+    PhysicsWorld* world;
+    RigidBody* body0;
+    RigidBody* body1;
+
+    Manipulator(PhysicsWorld* world) 
+        : world(world)
+    {}
+};
+
 int main() 
 {
     rabbit::scene scene;
@@ -22,14 +33,25 @@ int main()
     world->setGravity(Vector3(0.0, 0.0, 0.0));
 
     rabbit::polyline_drawable_object polyline({
-        rabbit::vec3f{ 0.3f, 0.7f, 0.0f }, 
-        rabbit::vec3f{ 0.0f, 0.0f, 0.0f }
+        {0.0, 0.0, 0.0},
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0},
+        {0.0, 0.0, 0.0}
     });
+
+    //view->camera.set_eye(rabbit::vec3f(100.0, 100.0, 100.0));
+    //view->camera.set_target({0, 0, 0});
 
     scene.add_object(&polyline);
 
     while (!glfwWindowShouldClose(window)) 
     {
+        view->camera.set_camera(
+            rabbit::vec3f{10.f*cos(glfwGetTime()), 10.f*sin(glfwGetTime()), 3},
+            {0, 0, 0}
+        );
+        
         world->update(1.0f / 60.0f);
         scene.update();
 
