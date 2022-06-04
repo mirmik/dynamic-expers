@@ -27,6 +27,21 @@ public:
     }
 };
 
+void set_joint_torque(HingeJoint* joint, float torque)
+{
+    if (torque == 0) 
+    {
+        joint->enableMotor(false);
+        joint->setMaxMotorTorque(0);
+        joint->setMotorSpeed(0);
+    }
+
+    float sign = std::signbit(torque) ? -1 : 1;
+    joint->enableMotor(true);
+    joint->setMaxMotorTorque(std::abs(torque));
+    joint->setMotorSpeed(1000000 * sign);
+}
+
 class RigidBodyPair 
 {
 public:
@@ -100,9 +115,13 @@ public:
     RigidBodyPair base_body_proxy;
     RigidBodyPair arm1;
     RigidBodyPair arm2;
+    RigidBodyPair arm3;
+    RigidBodyPair arm4;
 
     HingeJoint* joint0;
     HingeJoint* joint1;
+    HingeJoint* joint2;
+    HingeJoint* joint3;
 
     std::vector<RigidBodyPair*> bodies = {};
     std::vector<HingeJoint*> joints = {};
@@ -115,14 +134,18 @@ public:
         base_body_proxy = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,0}));
         arm1 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-1}));
         arm2 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-2}));
+        arm3 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-3}));
+        arm4 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-4}));
         base_body.body->setType(BodyType::STATIC);
 
         create_fixed_joint(world, base_body.get_pose().lin, base_body_proxy.body, base_body.body);
         joint0 = create_hinge_joint(world, base_body_proxy.get_pose().lin, {0,1,0}, arm1.body, base_body_proxy.body);
         joint1 = create_hinge_joint(world, arm1.get_pose().lin, {0,1,0}, arm2.body, arm1.body);
+        joint2 = create_hinge_joint(world, arm2.get_pose().lin, {0,1,0}, arm3.body, arm2.body);
+        joint3 = create_hinge_joint(world, arm3.get_pose().lin, {0,1,0}, arm4.body, arm3.body);
 
-        bodies = {&base_body, &base_body_proxy, &arm1, &arm2};
-        joints = {joint0, joint1};
+        bodies = {&base_body, &base_body_proxy, &arm1, &arm2, &arm3, &arm4};
+        joints = {joint0, joint1, joint2, joint3};
     }
 
     void bind_to_scene(rabbit::scene& scene)
@@ -148,8 +171,7 @@ int main()
     Manipulator manipulator(world);
     manipulator.bind_to_scene(scene);
 
-    HingeJoint * j = manipulator.joint0;
-    j->enableMotor(true);
+    set_joint_torque(manipulator.joint0, 5);
 
     while (!glfwWindowShouldClose(window)) 
     {
@@ -161,10 +183,6 @@ int main()
             rabbit::vec3f{0.f, 10.f, 3},
             {0, 0, 0}
         );
-
-    j->setMaxMotorTorque(1);
-    j->setMotorSpeed(1000000);
-
 
         double timeStep = 1.0f / 60.0f;
 
