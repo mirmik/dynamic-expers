@@ -4,7 +4,14 @@
 #include <rabbit/compat/reactphysics3d.h>
 #include <rabbit/mesh/mesh.h> 
 #include <rabbit/mesh/primitives.h> 
+#include <ralgo/filter/servo_filter.h>
+#include <ralgo/util/math.h>
+#include <igris/time/systime.h>
 
+#include <thread>
+#include <chrono>
+
+using namespace std::chrono_literals;
 using namespace reactphysics3d;
 
 class RigidBodyDrawer : public rabbit::drawable_object 
@@ -40,6 +47,11 @@ void set_joint_torque(HingeJoint* joint, float torque)
     joint->enableMotor(true);
     joint->setMaxMotorTorque(std::abs(torque));
     joint->setMotorSpeed(1000000 * sign);
+}
+
+double joint_angular_velocity(HingeJoint* joint)
+{
+    return joint->getMotorSpeed();
 }
 
 class RigidBodyPair 
@@ -132,20 +144,20 @@ public:
     {
         base_body = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,0}));
         base_body_proxy = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,0}));
-        arm1 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-1}));
-        arm2 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-2}));
-        arm3 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-3}));
-        arm4 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-4}));
+        arm1 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,1}));
+        arm2 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,2}));
+        arm3 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,3}));
+        //arm4 = RigidBodyPair::make(world, initial_pose * ralgo::mov3<float>({0,0,-4}));
         base_body.body->setType(BodyType::STATIC);
 
         create_fixed_joint(world, base_body.get_pose().lin, base_body_proxy.body, base_body.body);
         joint0 = create_hinge_joint(world, base_body_proxy.get_pose().lin, {0,1,0}, arm1.body, base_body_proxy.body);
         joint1 = create_hinge_joint(world, arm1.get_pose().lin, {0,1,0}, arm2.body, arm1.body);
         joint2 = create_hinge_joint(world, arm2.get_pose().lin, {0,1,0}, arm3.body, arm2.body);
-        joint3 = create_hinge_joint(world, arm3.get_pose().lin, {0,1,0}, arm4.body, arm3.body);
+        //joint3 = create_hinge_joint(world, arm3.get_pose().lin, {0,1,0}, arm4.body, arm3.body);
 
-        bodies = {&base_body, &base_body_proxy, &arm1, &arm2, &arm3, &arm4};
-        joints = {joint0, joint1, joint2, joint3};
+        bodies = {&base_body, &base_body_proxy, &arm1, &arm2, &arm3};//, &arm4};
+        joints = {joint0, joint1, joint2};//, joint3};
     }
 
     void bind_to_scene(rabbit::scene& scene)
@@ -166,13 +178,23 @@ int main()
 
     PhysicsCommon physicsCommon;
 	PhysicsWorld* world = physicsCommon.createPhysicsWorld();
-    world->setGravity(Vector3(0.0, 0.0, -1));
+    world->setGravity(Vector3(0.0, 0.0, 0.0));
 
     Manipulator manipulator(world);
     manipulator.bind_to_scene(scene);
 
-    set_joint_torque(manipulator.joint0, 5);
+    const int N = 3;
+    ralgo::servo_filter servo[N];
 
+    //set_joint_torque(manipulator.joint0, 5);
+
+    for (int i = 0; i < N; ++i)
+    {
+        servo[i].setup_velocity_parameters(0.2, 0.75, 9);
+        servo[i].setup_position_parameters(0.5, 1, 1);
+    }
+
+    double lastang[N] = {};
     while (!glfwWindowShouldClose(window)) 
     {
         /*view->camera.set_camera(
@@ -184,13 +206,32 @@ int main()
             {0, 0, 0}
         );
 
-        double timeStep = 1.0f / 60.0f;
+        double timeStep = 1.0f / 120.0f;
+
+        double target[N];
+        auto loct = igris::millis() % 16000;
+        if (loct < 2000)       { target[0] = 0; target[1] = 0;  target[2] = 0; }
+        else if (loct < 4000)  { target[0] = 0; target[1] = 0;  target[2] = 1; }
+        else if (loct < 6000)  { target[0] = 0; target[1] = 1;  target[2] = 0; }
+        else if (loct < 8000)  { target[0] = 0; target[1] = 1; target[2] = 1; }
+        else if (loct < 10000) { target[0] =  1; target[1] = 0;  target[2] = 0; }
+        else if (loct < 12000) { target[0] =  1; target[1] = 0;  target[2] = 1; }
+        else if (loct < 14000) { target[0] =  1; target[1] = 1;  target[2] = 0; }
+        else                   { target[0] =  1; target[1] = 1; target[2] = 1; }
+
+        
+        for (int i = 0; i < N; ++i)
+        {
+            auto curang = -manipulator.joints[i]->getAngle(); 
+            auto angvel = ralgo::angdiff<float>(curang, lastang[i]) / timeStep;
+            auto torque = servo[i].position_velocity_control(target[i], curang, 0, angvel, 0.2, timeStep);
+            set_joint_torque(manipulator.joints[i], torque);
+            lastang[i] = curang;
+        }
 
         world->update(timeStep);
         scene.update();
-
-        nos::println(rabbit::react_cast(manipulator.joint0->getReactionTorque(timeStep)));
-
+        
         glfwPollEvents();
         glfwSwapBuffers(window);
     }
