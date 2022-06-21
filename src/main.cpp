@@ -302,9 +302,9 @@ int main()
         auto inertia1 = manipulator.arm1_inertia();
         auto inertia2 = manipulator.arm2_inertia();
         auto inertia3 = manipulator.arm3_inertia();
-        servo[0].setup_velocity_filter(inertia1[1][1]*30, 0);
-        servo[1].setup_velocity_filter(inertia2[1][1]*30, 0);
-        servo[2].setup_velocity_filter(inertia3[1][1]*30, 0);
+        servo[0].setup_velocity_filter(30, 0);
+        servo[1].setup_velocity_filter(30, 0);
+        servo[2].setup_velocity_filter(30, 0);
         nos::println(inertia1[1][1]);
         nos::println(inertia2[1][1]);
         nos::println(inertia3[1][1]);
