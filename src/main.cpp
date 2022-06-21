@@ -14,6 +14,8 @@
 using namespace std::chrono_literals;
 using namespace reactphysics3d;
 
+PhysicsCommon physicsCommon;
+
 class RigidBodyDrawer : public rabbit::drawable_object 
 { 
     RigidBody* m_body;
@@ -136,6 +138,7 @@ public:
     HingeJoint* joint3;
 
     std::vector<RigidBodyPair*> bodies = {};
+    std::vector<RigidBodyPair*> arms = {};
     std::vector<HingeJoint*> joints = {};
 
 public:
@@ -157,7 +160,37 @@ public:
         //joint3 = create_hinge_joint(world, arm3.get_pose().lin, {0,1,0}, arm4.body, arm3.body);
 
         bodies = {&base_body, &base_body_proxy, &arm1, &arm2, &arm3};//, &arm4};
+        arms = {&arm1, &arm2, &arm3};
         joints = {joint0, joint1, joint2};//, joint3};
+
+        create_colliders();
+        
+        for (auto* arm : arms)
+        { 
+            nos::println(arm->body->getMass());
+            nos::println(rabbit::react_cast(arm->body->getLocalCenterOfMass()));
+            nos::println(rabbit::react_cast(arm->body->getLocalInertiaTensor()));
+
+            auto inertia = rabbit::react_world_frame_inertia_tensor(arm1.body);
+        }
+    }
+
+    void add_collider_for_arm(RigidBodyPair& arm)
+    {
+        auto * shape = physicsCommon.createCapsuleShape(0.01, 0.98);
+        auto transform = rabbit::react_cast(
+            ralgo::mov3<float>({0,0,0.5}) * 
+            ralgo::rot3<float>({1,0,0}, M_PI/2));
+        arm.body->addCollider(shape, transform);
+    }
+
+    void create_colliders() 
+    {
+        for (auto* body : arms)
+        {
+            add_collider_for_arm(*body);
+            body->body->updateMassPropertiesFromColliders();
+        }
     }
 
     void bind_to_scene(rabbit::scene& scene)
@@ -171,17 +204,18 @@ public:
 
 int main() 
 {
-    rabbit::scene scene;
-    auto window = rabbit::create_glfw_window();
-    auto view = scene.create_view();
-    view->enable_trihedron();
+    //rabbit::scene scene;
+    //auto window = rabbit::create_glfw_window();
+    //auto view = scene.create_view();
+    //view->enable_trihedron();
 
-    PhysicsCommon physicsCommon;
 	PhysicsWorld* world = physicsCommon.createPhysicsWorld();
     world->setGravity(Vector3(0.0, 0.0, 0.0));
 
     Manipulator manipulator(world);
-    manipulator.bind_to_scene(scene);
+    //manipulator.bind_to_scene(scene);
+
+    return 0;
 
     const int N = 3;
     ralgo::servo_filter servo[N];
@@ -195,16 +229,17 @@ int main()
     }
 
     double lastang[N] = {};
-    while (!glfwWindowShouldClose(window)) 
+    //while (!glfwWindowShouldClose(window)) 
+    while (true) 
     {
         /*view->camera.set_camera(
             rabbit::vec3f{10.f*cos(glfwGetTime()), 10.f*sin(glfwGetTime()), 3},
             {0, 0, 0}
         );*/
-        view->camera.set_camera(
-            rabbit::vec3f{0.f, 10.f, 3},
-            {0, 0, 0}
-        );
+        //view->camera.set_camera(
+        //    rabbit::vec3f{0.f, 10.f, 3},
+        //    {0, 0, 0}
+        //);
 
         double timeStep = 1.0f / 120.0f;
 
@@ -229,11 +264,12 @@ int main()
             lastang[i] = curang;
         }
 
+        nos::println(lastang[0]);
         world->update(timeStep);
-        scene.update();
+        //scene.update();
         
-        glfwPollEvents();
-        glfwSwapBuffers(window);
+        //glfwPollEvents();
+        //glfwSwapBuffers(window);
     }
 
 
