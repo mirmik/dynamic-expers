@@ -6,9 +6,9 @@ licant.include("rabbit")
 licant.include("ralgo")
 
 licant.cxx_application("app",
-	sources = ["src/main.cpp"],
-	libs = ["reactphysics3d", "GL", "GLEW", "glfw", "igris", "nos"],
-	mdepends = ["rabbit", "rabbit.opengl", "ralgo"] 
-)
+                       sources=["src/main.cpp"],
+                       libs=["reactphysics3d", "igris", "nos", "crow"],
+                       mdepends=["rabbit", "ralgo"]
+                       )
 
 licant.ex("app")

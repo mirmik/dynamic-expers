@@ -1,0 +1,31 @@
+{
+    "links" : 
+    [
+        { 
+            "name" : "body",
+            "pose" : { "lin" : [0,0,0], "ang" : [0,0,0] },
+            "visual" : 
+            [
+                {
+                    "geometry" : "cylinder",
+                    "radius" : 0.1,
+                    "height" : 0.2,
+                }
+            ],
+            "crowtheme" : "ctrpanel/body"
+        },
+        { 
+            "name" : "arm0",
+            "pose" : { "lin" : [0,0,0], "ang" : [0,0,0] },
+            "visual" : 
+            [
+                {
+                    "geometry" : "cylinder",
+                    "radius" : 0.1,
+                    "height" : 0.2,
+                }
+            ],
+            "crowtheme" : "ctrpanel/arm0_pose"
+        }
+    ]
+}
